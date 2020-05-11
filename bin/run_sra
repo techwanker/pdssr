@@ -1,0 +1,8 @@
+set -x
+set -e
+export PYTHONPATH=/common/home/jjs/python/projects/sales_reporting/src
+#python sra_main.py initialize
+python sra_main.py load --file_name testdata/load1.cds.dat --distributor_cd EXOTICTX
+python sra_main.py load_condition --etl_file_id 1
+python sra_main.py post --etl_file_id 1
+

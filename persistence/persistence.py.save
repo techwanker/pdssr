@@ -1,0 +1,401 @@
+# TODO externalize sql and have a common insert
+# TODO common connection classodo
+from pdsutil.Dexterity import Dexterity
+
+# TODO CHANGE ALL DT to YYYYMMDD
+# TODO ADD FIELD VALIDATORS
+# TODO SHARE TABLE TAGS
+# TODO
+
+dexterity = Dexterity()
+
+
+
+
+def get_all_rows(cursor):
+    # TODO move to a util package
+    ##
+    #  Returns a list of dictionaries
+    #  each list entry corresponds to one row
+    #  each row is keyed by column name or alias per select statement
+    rows = []
+    columns = [i[0] for i in cursor.description]
+    column_list = []
+    for row in cursor:
+        rows.append(dict(zip(columns, row)))
+    print ("returning " + str(rows))
+    return rows
+
+
+class customer:
+    def __init__(self, connection):
+        self.connection = connection
+
+    insert_cursor = None
+    customer_insert = """
+    insert into CUSTOMER (
+        CUSTOMER_ID
+    ) values (
+        :CUSTOMER_ID
+    )"""
+
+    def insert(self, binds):
+        if self.insert_cursor is None:
+            insert_cursor = conn.cursor()  # TODO this should be a prepare
+        insert_cursor = conn.cursor()
+        insert_cursor.execute(self.customer_insert, binds)
+
+
+class etlCustomer:
+    etl_customer_insert = """
+    insert into ETL_CUSTOMER (
+        ETL_CUSTOMER_ID,
+        ETL_FILE_ID, SHIP_TO_CUST_ID, CUST_NM,
+        ADDR_1, ADDR_2, CITY, STATE,
+        POSTAL_CD, TEL_NBR, NATIONAL_ACCT_ID,
+        SPECIAL_FLG
+    ) values (
+        ETL_CUSTOMER_ID_seq.nextval,
+        :ETL_FILE_ID, :SHIP_TO_CUST_ID, :CUST_NM,
+        :ADDR_1, :ADDR_2, :CITY, :STATE,
+        :POSTAL_CD, :TEL_NBR, :NATIONAL_ACCT_ID,
+        :SPECIAL_FLG
+    )"""
+
+    insert_cursor = None
+
+    def insert(this, binds):
+        if this.insert_cursor is None:
+            this.insert_cursor = conn.cursor()
+            this.insert_cursor.prepare(this.etl_customer_insert)  # get rid of prepares, TODO keep a cursor pool
+        try:
+            this.insert_cursor.execute(None, binds)
+        except Exception as e:
+            dexterity.sql_exception(this.etl_customer_insert, binds, e)
+
+
+class etlFile:
+    etl_file_values_select = """
+       select etl_file_id_seq.nextval etl_file_id, org_id
+       from org
+       where org_cd = :ORG_CD"""
+
+    etl_file_values_select_cur = None
+
+    etl_file_initial_insert = """
+       insert into ETL_FILE (
+           ETL_FILE_ID, RPT_ORG_ID, DATAFEED_ORG_ID
+       ) values (
+           :ETL_FILE_ID, :ORG_ID, :ORG_ID
+        )"""
+
+    insert_cursor = None
+    initial_insert_cursor = None
+
+    etl_file_values_select_cur = None
+
+    def initial_insert(self, binds):
+        ##
+        ##  inserts a row in the org table
+        ##  returns the primary key of the inserted record
+        ## """
+
+        # Get the pk
+        if self.etl_file_values_select_cur is None:
+            self.etl_file_values_select_cur = conn.cursor()
+            self.etl_file_values_select_cur.prepare(self.etl_file_values_select)
+
+        # print "cur " + self.etl_file_values_select + str(binds)
+        try:
+            self.etl_file_values_select_cur.execute(None, binds)
+        except Exception as e:
+            dexterity.sql_exception(self.etl_file_values_select, binds, e)
+        rows = get_all_rows(self.etl_file_values_select_cur)
+        if len(rows) != 1:  # todo distributor not found
+            raise Exception("expected on row, got " + str(len(rows)))
+        initial_insert_cursor = None
+
+        etl_file_id = rows[0]["ETL_FILE_ID"]
+        org_id = rows[0]["ORG_ID"]
+
+        insert_binds = {
+            "ETL_FILE_ID": etl_file_id,
+            "ORG_ID": org_id
+        }
+        # TODO wrap this
+        if self.initial_insert_cursor is None:
+            self.initial_insert_cursor = conn.cursor()
+            self.initial_insert_cursor.prepare(self.etl_file_initial_insert)
+        try:
+            self.initial_insert_cursor.execute(None, insert_binds)
+        except Exception as e:
+            oconn.dump_binds(self.etl_file_initial_insert, insert_binds)
+            raise e
+        return etl_file_id
+
+
+class etlSalesTot:
+    etl_sale_tot_insert = """
+      insert into etl_sale_tot
+      (
+         ETL_SALE_TOT_ID, ETL_FILE_ID, SALES_START_DT,
+         SALES_END_DT,
+         FILE_CREATE_DT, SALES_REC_CNT, SUM_EXT_NET_AMT
+      )
+      values
+      (
+         ETL_SALE_TOT_ID_SEQ.nextval, :ETL_FILE_ID, :SALES_START_DT,
+         :SALES_END_DT, :FILE_CREATE_DT, :SALES_REC_CNT,
+         :SUM_EXT_NET_AMT
+      )"""
+
+    def insert(self, binds):
+        print ("not supported")  # TODO
+        # raise Exception("not supported")
+
+
+class etlInventory:
+    etl_inventory_insert = """
+    insert into ETL_INVENTORY (
+        ETL_INVENTORY_ID,
+        ETL_FILE_ID, DISTRIBUTOR_ID, MFR_ID,
+        MFR_PRODUCT_ID, COMMENTS, CASES,
+        BOXES, UNITS, CASE_GTIN
+    ) values (
+        ETL_INVENTORY_ID_SEQ.nextval,
+        :ETL_FILE_ID, :DISTRIBUTOR_ID, :MFR_ID,
+        :MFR_PRODUCT_ID, :COMMENTS, :CASES,
+        :BOXES, :UNITS, :CASE_GTIN
+    )"""
+
+    insert_cursor = None
+
+    def insert(self, binds):
+        if self.insert_cursor is None:
+            insert_cursor = conn.cursor()
+            insert_cursor.prepare(self.etl_inventory_insert)
+        try:
+            insert_cursor.execute(self.etl_inventory_insert, binds)
+        except Exception as e:
+            oconn.dump_binds(self.etl_inventory_insert, binds)
+            raise e
+
+
+class etlInventoryTot:
+    etl_inventory_tot_insert = """
+    insert into ETL_INVENTORY_TOT (
+        ETL_FILE_ID,
+        INVENTORY_DT, FILE_CREATION_DT, RECORD_CNT_REPORTED
+    ) values (
+        :ETL_FILE_ID,
+        :INVENTORY_DT, :FILE_CREATION_DT, :RECORD_CNT_REPORTED
+    )"""
+
+    def insert(self, binds):
+        insert_cursor = conn.cursor()
+        insert_cursor.prepare(self.etl_inventory_tot_insert)
+
+        try:
+            insert_cursor.execute(self.etl_inventory_tot_insert, binds)
+        except Exception as e:
+            # TODO this should be in Cursor
+            print (self.etl_inventory_tot_insert)
+            print (binds)   # TODO use cursor helper
+            raise e
+
+
+class etlSale:
+    etl_sale_insert = """
+    insert into ETL_SALE (
+        ETL_SALE_ID, ETL_FILE_ID, DISTRIB_ID, MFR_ID,
+        MFR_PRODUCT_ID, SHIP_TO_CUST_ID, INVOICE_CD, INVOICE_DT,
+        SHIP_DT, EXTENDED_NET_AMT,
+        /* CURR_CD, */
+        DISTRIB_PROD_REF,
+        PRODUCT_DESCR, CASES_SHIPPED, BOXES_SHIPPED, UNITS_SHIPPED,
+        CASE_GTIN
+    ) values (
+        ETL_SALE_ID_SEQ.nextval, :ETL_FILE_ID, :DISTRIB_ID, :MFR_ID,
+        :MFR_PRODUCT_ID, :SHIP_TO_CUST_ID, :INVOICE_CD, :INVOICE_DT,
+        :SHIP_DT, :EXTENDED_NET_AMT,
+        /* :CURR_CD, */
+        :DISTRIB_PROD_REF,
+        :PRODUCT_DESCR, :CASES_SHIPPED, :BOXES_SHIPPED, :UNITS_SHIPPED,
+        :CASE_GTIN
+    )"""
+
+    def insert(self, binds):
+        insert_cursor = conn.cursor()
+        try:
+            insert_cursor.execute(self.etl_sale_insert, binds)
+        except Exception as e:
+            dump_binds(self.etl_sale_insert, binds)
+            raise e
+
+
+class orgDatafeed:
+    org_datafeed_insert = """
+    insert into ORG_DATAFEED (
+        ORG_ID
+    ) select
+          org_id from org where org_cd = :org_cd
+    """
+
+    insert_cursor = None
+    new_id = None
+
+    def insert(this, org_cd):
+        binds = {"org_cd": org_cd}
+        insert_cursor = conn.cursor()
+        if this.insert_cursor is None:
+            insert_cursor = conn.cursor()
+            insert_cursor.prepare(this.org_datafeed_insert)
+        insert_cursor.execute(None, binds)
+
+
+class etlCustomerTot:
+    etl_customer_tot_insert = """
+    insert into etl_customer_tot(
+         etl_file_id,
+         customer_count
+    )
+    values (
+        :ETL_FILE_ID,
+        :CUSTOMER_COUNT
+     )"""
+
+    insert_cursor = None
+
+    def insert(self, binds):
+        if self.insert_cursor is None:
+            self.insert_cursor = conn.cursor()
+            self.insert_cursor.prepare(self.etl_customer_tot_insert)
+        self.insert_cursor.execute(None, binds)
+
+
+class org:
+    ##
+    # persistence class for org table
+    #
+    org_insert = """
+    insert into ORG  (
+        ORG_ID, ORG_CD, ORG_NM
+    )
+    values (
+        ORG_ID_SEQ.nextval, :ORG_CD, :ORG_NM
+    ) returning org_id into :new_id"""
+    insert_cursor = None
+    new_id = None
+
+    def insert(this, binds):
+        ##
+        #  inserts a row in the org table
+        #  returns the primary key of the inserted record
+        if this.insert_cursor is None:
+            this.insert_cursor = conn.cursor()
+            this.insert_cursor.prepare(this.org_insert)
+            new_id = this.insert_cursor.var(cx_Oracle.NUMBER)
+        binds["new_id"] = new_id
+        this.insert_cursor.execute(None, binds)
+        retval = this.new_id.getvalue()
+        return retval
+
+    get_for_org_cd_cursor = None
+
+    def get_for_org_cd(self, org_cd):
+
+        select_for_org_cd_ = """
+        select org_id, org_cd, org_nm
+        from org
+        where org_cd = :ORG_CD"""
+
+        if self.get_for_org_cd_cursor is None:
+            get_for_org_cd_cursor = conn.cursor()
+            get_for_org_cd_cursor.prepare(self.org_insert)
+            self.new_id = get_for_org_cd_cursor.var(cx_Oracle.NUMBER)
+        binds = {"ORG_CD": org_cd}
+        get_for_org_cd_cursor.execute(None, binds)
+
+        return get_all_rows(get_for_org_cd_cursor)
+
+
+class product:
+    product_insert = """
+    insert into PRODUCT (
+        PRODUCT_ID, MFR_ID, PRODUCT_DESCR, GTIN,
+        STAT_CD, EFF_DT, END_DT, TRACK_INVT_FLG,
+        UPC14, PRODUCT_GRP_ID, PRODUCT_CAT_ID
+    ) values (
+        product_id_seq.nextval :MFR_ID, :PRODUCT_DESCR, :GTIN,
+        :STAT_CD, :EFF_DT, :END_DT, :TRACK_INVT_FLG,
+	:UPC14, :PRODUCT_GRP_ID, :PRODUCT_CAT_ID
+    )"""
+
+    def insert(self, binds):
+        insert_cursor = conn.cursor()
+        # TODO
+        insert_cursor.execute(self.product_insert, binds)
+
+
+class productNomen:
+    product_nomen_insert = """
+    insert into PRODUCT_NOMEN (
+        PRODUCT_NOMEN_SEQ.nextval, ORG_ID, PRODUCT_ID, PRODUCT_NOMEN,
+        DESCR
+    ) values (
+        :PRODUCT_NOMEN_ID, :ORG_ID, :PRODUCT_ID, :PRODUCT_NOMEN,
+        :DESCR
+    )"""
+
+    def insert(self, binds):
+        insert_cursor = conn.cursor()
+        insert_cursor.execute(self.product_nomen_insert, binds)
+
+
+class productPkg:
+    product_pkg_insert = """
+    insert into PRODUCT_PKG (
+        PRODUCT_PKG_ID,
+        PKG_QTY_NUMERATOR, PKG_QTY_DIVISOR,
+        PRODUCT_ID, PKG_ID
+    ) values (
+        PRODUCT_PKG_SEQ.nextval
+        :PKG_QTY_NUMERATOR,
+        :PKG_QTY_DIVISOR,
+        :PRODUCT_ID,
+        :PKG_ID
+    )"""
+
+    def insert(self, binds):
+        insert_cursor = conn.cursor()
+        insert_cursor.execute(self.product_pkg_insert, binds)
+
+
+class productSuspectDtl:
+    product_suspect_dtl_insert = """
+    insert into PRODUCT_SUSPECT_DTL (
+        PRODUCT_SUSPECT_DTL_ID,
+        PRODUCT_ID, PRODUCT_SUSPECT_HDR_ID
+    ) values (
+        PRODUCT_SUSPECT_DTL_SEQ.nextval
+        :PRODUCT_ID, :PRODUCT_SUSPECT_HDR_ID
+    )"""
+
+    def insert(self, binds):
+        insert_cursor = conn.cursor()
+        insert_cursor.execute(self.product_suspect_dtl_insert, binds)
+
+
+class productSuspectHdr:
+    product_suspect_hdr_insert = """
+    insert into PRODUCT_SUSPECT_HDR (
+        PRODUCT_SUSPECT_HDR_ID,
+        DESCR
+    ) values (
+        PRODUCT_SUSPECT_HDR_SEQ.nextval,
+        :DESCR
+    )"""
+
+    def insert(self, binds):
+        insert_cursor = conn.cursor()
+        insert_cursor.execute(self.product_suspect_hdr_insert, binds)

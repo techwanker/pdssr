@@ -1,0 +1,431 @@
+SQL> create table org
+  2  (
+  3  	     org_id number(9) not null,
+  4  	     org_cd varchar2(16),
+  5  	     org_nm varchar2(32)
+  6  );
+
+Table created.
+
+SQL> 
+SQL> alter table org add constraint org_pk primary key (org_id);
+
+Table altered.
+
+SQL> 
+SQL> alter table org add constraint org_uq unique(org_cd);
+
+Table altered.
+
+SQL> 
+SQL> create sequence org_id_seq;
+
+Sequence created.
+
+SQL> 
+SQL> create table org_datafeed
+  2  (
+  3  	     org_id number(9) not null
+  4  );
+
+Table created.
+
+SQL> 
+SQL> alter table org_datafeed add constraint org_datafeed
+  2  primary key (org_id);
+
+Table altered.
+
+SQL> 
+SQL> alter table org_datafeed add constraint od_o_fk
+  2  foreign key (org_id) references org(org_id);
+
+Table altered.
+
+SQL> 
+SQL> create table etl_file
+  2  (
+  3  	     etl_file_id number(9) not null,
+  4  	     rpt_org_id      number(9) not null,
+  5  	     datafeed_org_id number(9) not null,
+  6  	     cust_cnt_rpt    number(9),
+  7  	     cust_cnt_act    number(9),
+  8  	     inventory_dt    date,
+  9  	     inventory_file_create_dt date,
+ 10  	     inventory_rec_cnt_act number(9),
+ 11  	     inventory_rec_cnt_rpt number(9),
+ 12  	     sale_prd_cover_start_dt	date,
+ 13  	     sale_prd_cover_end_dt	date,
+ 14  	     sale_min_dt_act		date,
+ 15  	     sale_max_dt_act		date,
+ 16  	     sale_file_create_dt  date,
+ 17  	     sale_rec_cnt_rpt	 number(9),
+ 18  	     sale_rec_cnt_act	 number(9),
+ 19  	     sale_net_extend_rpt   number(11,2),
+ 20  	     sale_net_extend_act   number(11,2)
+ 21  );
+
+Table created.
+
+SQL> 
+SQL> 
+SQL> alter table etl_file add constraint etl_file_pk
+  2   primary key (etl_file_id);
+
+Table altered.
+
+SQL> 
+SQL> 
+SQL> alter table etl_file add constraint ef_od_fk
+  2  foreign key (datafeed_org_id) references org_datafeed(org_id);
+
+Table altered.
+
+SQL> 
+SQL> 
+SQL> 
+SQL> create sequence etl_file_id_seq;
+
+Sequence created.
+
+SQL> /* */
+SQL> create table etl_customer
+  2  (
+  3  	     etl_customer_id  number(9) not null,
+  4  	     etl_file_id      number(9) not null,
+  5  	     class_of_trade   varchar(4),
+  6  	     ship_to_cust_id  varchar(10),
+  7  	     cust_nm	      varchar2(30),
+  8  	     addr_1	      varchar2(30),
+  9  	     addr_2	      varchar2(30),
+ 10  	     city	      varchar2(25),
+ 11  	     state	      varchar2(2),
+ 12  	     postal_cd	      varchar2(9),
+ 13  	     cntry_id	      varchar2(3),
+ 14  	     tel_nbr	      varchar2(10),
+ 15  	     national_acct_id varchar2(10),
+ 16  	     special_flg      varchar2(1)
+ 17  );
+
+Table created.
+
+SQL> 
+SQL> comment on column etl_customer.etl_customer_id is 'Surrogate primary key.';
+
+Comment created.
+
+SQL> 
+SQL> 
+SQL> 
+SQL> alter table etl_customer
+  2  add constraint etl_customer_pk
+  3  primary key (etl_customer_id);
+
+Table altered.
+
+SQL> 
+SQL> alter table etl_customer add constraint ec_ef_fk
+  2  foreign key (etl_file_id) references etl_file(etl_file_id);
+
+Table altered.
+
+SQL> 
+SQL> create sequence etl_customer_id_seq;
+
+Sequence created.
+
+SQL> /* */
+SQL> create table etl_inventory
+  2  (
+  3  	     etl_inventory_id number(9) not null,
+  4  	     etl_file_id      number(9) not null,
+  5  	     distributor_id varchar2(10),
+  6  	     mfr_id	     varchar2(10),
+  7  	     mfr_product_id  number(8),
+  8  	     comments	     varchar2(96),
+  9  	     cases	     number(6),
+ 10  	     boxes	     number(6),
+ 11  	     units	     number(6),
+ 12  	     case_gtin	     varchar2(14),
+ 13  	     inventory_qty   number(9,3),
+ 14  	     inventory_unit_meas_id varchar2(3)
+ 15  );
+
+Table created.
+
+SQL> 
+SQL> alter table etl_inventory add constraint etl_inventory_pk
+  2  primary key (etl_inventory_id);
+
+Table altered.
+
+SQL> 
+SQL> alter table etl_inventory add constraint ei_ef_fk
+  2  foreign key (etl_file_id) references etl_file(etl_file_id);
+
+Table altered.
+
+SQL> 
+SQL> create sequence etl_inventory_id_seq;
+
+Sequence created.
+
+SQL> 
+SQL> /* */
+SQL> create table etl_inventory_tot
+  2  (
+  3  	     etl_file_id      number(9) not null,
+  4  	     inventory_dt     date,
+  5  	     file_creation_dt date,
+  6  	     record_cnt_reported  number(8),
+  7  	     record_cnt_actual	number(8)
+  8  );
+
+Table created.
+
+SQL> 
+SQL> 
+SQL> alter table etl_inventory_tot add constraint etl_inventory_tot_pk
+  2  primary key (etl_file_id);
+
+Table altered.
+
+SQL> 
+SQL> alter table etl_inventory_tot add constraint eit_ef_fk foreign key
+  2  (etl_file_id) references etl_file(etl_file_id);
+
+Table altered.
+
+SQL> 
+SQL> /* */
+SQL> create table etl_sale (
+  2  	     etl_sale_id number(9) not null,
+  3  	     etl_file_id number(9) not null,
+  4  	     distrib_id varchar2(10) not null,
+  5  	     mfr_id	     varchar2(10) not null,
+  6  	     mfr_product_id  varchar2(10),
+  7  	     ship_to_cust_id varchar2(10) not null,
+  8  	     invoice_cd      varchar2(10),
+  9  	     invoice_dt date,
+ 10  	     ship_dt  date,
+ 11  	     /* should have a currency */
+ 12  	     extended_Net_Amt number(9,2),
+ 13  	     curr_cd varchar2(3),
+ 14  	     distrib_prod_ref varchar2(12),
+ 15  	     product_descr varchar(32),
+ 16  	     cases_shipped number(9),
+ 17  	     boxes_shipped number(9),
+ 18  	     units_shipped number(9),
+ 19  	     case_gtin	   varchar2(14),
+ 20  	     product_id    number(9),
+ 21  	     customer_id   number(9)
+ 22  );
+
+Table created.
+
+SQL> 
+SQL> alter table etl_sale add constraint etl_sale_pk
+  2  primary key (etl_sale_id);
+
+Table altered.
+
+SQL> 
+SQL> alter table etl_sale add constraint es_ef_fk
+  2  foreign key (etl_file_id) references etl_file(etl_file_id);
+
+Table altered.
+
+SQL> 
+SQL> create sequence etl_sale_id_seq;
+
+Sequence created.
+
+SQL> 
+SQL> create table etl_sale_tot (
+  2  	     etl_sale_tot_id number(9) not null,
+  3  	     etl_file_id number(9) not null,
+  4  	     sales_start_dt date not null,
+  5  	     sales_end_dt date	not null,
+  6  	     file_create_dt dt not null,
+  7  	     sales_rec_cnt  number(9),
+  8  	     sum_ext_net_amt number(11,2) not null
+  9  );
+	file_create_dt dt not null,
+	               *
+ERROR at line 6:
+ORA-00902: invalid datatype 
+
+
+SQL> 
+SQL> alter table etl_sale_tot add constraint etl_sale_tot_pk
+  2  primary key (etl_sale_tot_id);
+alter table etl_sale_tot add constraint etl_sale_tot_pk
+*
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> alter table etl_sale_tot add constraint est_ef_fk
+  2  foreign key (etl_file_id) references etl_file(etl_file_id);
+alter table etl_sale_tot add constraint est_ef_fk
+*
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create table product
+  2  (
+  3  	     product_id      number(9) not null,
+  4  	     mfr_id	     number(9) not null,
+  5  	     product_descr   varchar2(60),
+  6  	     gtin	     varchar2(14),
+  7  	     stat_cd	     char(1),
+  8  	     eff_dt	     date,
+  9  	     end_dt	     date,
+ 10  	     track_invt_flg  varchar2(1),
+ 11  	     upc14	     varchar2(14),
+ 12  	     product_grp_id  number(9),
+ 13  	     product_cat_id  number(9)
+ 14  );
+
+Table created.
+
+SQL> 
+SQL> create sequence product_id_seq;
+
+Sequence created.
+
+SQL> 
+SQL> create table product_pkg
+  2  (
+  3  	     product_pkg_id number(9) not null,
+  4  	     product_id     number(9) not null,
+  5  	     pkg_id	    number(9) not null,
+  6  	     pkg_qty_numerator number(5) not null,
+  7  	     pkg_qty_divisor   number(5) not null
+  8  );
+
+Table created.
+
+SQL> 
+SQL> 
+SQL> 
+SQL> alter table product_pkg add constraint pp_pk
+  2  primary key (product_pkg_id);
+
+Table altered.
+
+SQL> 
+SQL> create sequence product_pkg_id_seq;
+
+Sequence created.
+
+SQL> 
+SQL> create table product_nomen
+  2  (
+  3  	     product_nomen_id number(9) not null,
+  4  	     org_id	      number(9) not null,
+  5  	     product_id       number(9) not null,
+  6  	     product_nomen    varchar2(50),
+  7  	     descr	      varchar2(60)
+  8  );
+
+Table created.
+
+SQL> 
+SQL> alter table product_nomen add constraint pn_pk
+  2  primary key (product_nomen_id);
+
+Table altered.
+
+SQL> 
+SQL> create table customer
+  2  (
+  3  	     customer_id number(9) not null
+  4  );
+
+Table created.
+
+SQL> 
+SQL> alter table customer add constraint customer_pk primary key (customer_id);
+
+Table altered.
+
+SQL> 
+SQL> alter table customer add constraint c_no_fk
+  2  foreign key (customer_id) references org (org_id);
+
+Table altered.
+
+SQL> 
+SQL> create table product_suspect_hdr
+  2  (
+  3  	     product_suspect_hdr_id number(9) not null,
+  4  	     descr		    varchar2(60)
+  5  );
+
+Table created.
+
+SQL> 
+SQL> alter table product_suspect_hdr add constraint  psh_pk
+  2  primary key (product_suspect_hdr_id);
+
+Table altered.
+
+SQL> 
+SQL> create table product_suspect_dtl
+  2  (
+  3  	     product_suspect_dtl_id number(9) not null,
+  4  	     product_id 	    number(9) not null,
+  5  	     product_suspect_hdr_id number(9) not null
+  6  );
+
+Table created.
+
+SQL> 
+SQL> create table etl_customer_tot
+  2  (
+  3  	     etl_file_id	    number(9) not null,
+  4  	     customer_count	    number(9) not null
+  5  );
+
+Table created.
+
+SQL> 
+SQL> alter table etl_customer_tot add constraint etl_customer_total_pk
+  2  primary key (etl_file_id);
+
+Table altered.
+
+SQL> 
+SQL> alter table etl_customer_tot add constraint ect_ef_fk
+  2  foreign key (etl_file_id) references etl_file (etl_file_id);
+
+Table altered.
+
+SQL> 
+SQL> create table org_mfr
+  2  (
+  3  	 org_id number(9) not null,
+  4  	 cds_id varchar2(10)
+  5  );
+
+Table created.
+
+SQL> 
+SQL> alter table org_mfr add constraint org_mfr_pk
+  2  primary key (org_id);
+
+Table altered.
+
+SQL> 
+SQL> alter table org_mfr add constraint om_uq
+  2  unique (cds_id);
+
+Table altered.
+
+SQL> 
+SQL> 
+SQL> exit

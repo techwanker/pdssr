@@ -1,0 +1,72 @@
+workbook:
+    description: >
+       The sales, customers and inventory records for a given load file
+    binds:
+       ETL_FILE_ID:
+           data_type: integer
+           label: "etl_file_id"
+worksheets:
+    -
+        worksheet_name: "customers"
+        sql: >
+               select etl_customer_id, etl_file_id,
+                   ship_to_cust_id, cust_nm, addr_1,
+                   addr_2, city, state,
+                   postal_cd, cntry_id, tel_nbr,
+                   national_acct_id, special_flg
+               from etl_customer
+               where etl_file_id = %(ETL_FILE_ID)s
+        columns:
+           -
+              name: etl_customer_id
+              heading: "ETL Customer ID"
+           -
+              name: etl_file_id
+              heading: "ETL File ID"
+           -
+              name: ship_to_cust_id
+              heading: "Ship to Cust ID"
+           -
+              name: cust_nm
+              heading: "Customer Name"
+              display_length: 30
+           -
+              name: addr_1
+              heading: "Address 1"
+              display_length: 30
+           -
+              name: addr_2
+              heading: "Address 2"
+              display_length: 30
+           -
+              name: state
+              heading: "ST"
+              display_length: 2
+           -
+              name: postal_cd
+              heading: "Postal Code"
+              display_length: 10
+           -
+              name: tel_nbr
+              heading: "Telephone #"
+              display_length: 10
+    -
+        worksheet_name: "sales"
+        sql: >
+               select etl_sale_id,     etl_file_id,      line_number,      distrib_id,
+                  mfr_id,              mfr_product_id,   ship_to_cust_id,  invoice_cd,
+                  invoice_dt,          ship_dt,          extended_net_amt, curr_cd,
+                  distrib_product_ref, product_descr,    cases_shipped,    boxes_shipped,
+                  units_shipped,       case_gtin,        product_id
+               from etl_sale
+               where etl_file_id = %(ETL_FILE_ID)s
+    -
+        worksheet_name: "inventory"
+        sql: >
+                select etl_inventory_id, etl_file_id,    distributor_id,
+                        mfr_id,           mfr_product_id, comments,
+                        cases,            boxes,          units,
+                        case_gtin,        inventory_qty,  inventory_unit_meas_id,
+                        line_number
+                from etl_inventory where etl_file_id = %(ETL_FILE_ID)s
+

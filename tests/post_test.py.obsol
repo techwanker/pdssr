@@ -1,0 +1,21 @@
+import unittest
+from pdssr.Post2 import Post
+from pdsutil.DbUtil import ConnectionHelper
+import logging
+import pdsutil.tests.get_test_postgres_connection as test_connnection
+
+
+class post_test(unittest.TestCase):
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
+    def test_post(self):
+        connection = test_connnection.get_test_postgres_connection()
+        #connection = ConnectionHelper().get_named_connection("it")
+        poster = Post(connection)
+        statements= poster.statements
+        print ("statements %s" % statements)
+        binds = {"ETL_FILE_ID" : 1}
+        poster.process(1)
+
+if __name__ == "__main__":
+    unittest.main()

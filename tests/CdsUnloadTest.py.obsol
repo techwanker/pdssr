@@ -1,0 +1,53 @@
+import unittest
+from pdsutil.DbUtil import ConnectionHelper
+import pdsutil.tests.get_test_postgres_connection as test_connnection
+import logging
+from  pdssr.CdsUnload import CdsUnload
+import pdsutil.field_metadata as field_metadata
+from pdssr.CdsReportingMetadata import CdsReportingMetadata
+
+logger = logging.getLogger(__name__)
+
+
+class CdsUnloadTest(unittest.TestCase):
+    def setUp(self):
+        self.connection = test_connnection.get_test_postgres_connection()
+        self.record_defs = CdsReportingMetadata().record_defs
+
+    def tearDown(self):
+        logger.info("no teardown necessary")
+        # self.connection.execute("DROP DATABASE testdb")
+
+    def test_wank(self):
+        CdsUnload(self.connection).process(201723, "/tmp/x.cds", False)
+
+    def test_inventory(self):
+        data_map = {
+            'MFR_PRODUCT_ID': '00001957',
+            'LINE_NUMBER': None,
+            'BOXES': 0,
+            'ETL_FILE_ID': 201723,
+            'UNITS': -76,
+            'CASES': 84,
+            'CASE_GTIN': '00012345019572',
+            'FILLER': ' ',
+            'DISTRIBUTOR_ID': '1',
+            'ETL_INVENTORY_ID': 8215,
+            'COMMENTS': None,
+            'RECORD_TYPE': 'IR',
+            'MFR_ID': '5',
+            'INVENTORY_UNIT_MEAS_ID': None,
+            'INVENTORY_QTY': None}
+
+        buff = field_metadata.format_line(self.record_defs["inventory"], data_map)
+
+        self.assertEqual(buff[0:10],  "0000000001")   # Distributor identification DISTRIBUTOR_ID
+        self.assertEqual(buff[10:20], "0000000005")    # Manufacturer ID
+        self.assertEqual(buff[20:28], "00001957")                # Manufacturer Product Id MFR_PRODUCT_ID
+        self.assertEqual(buff[28:124], "".ljust(96))
+        self.assertEqual(buff[124:130],"000084")                        # cases
+        self.assertEqual(buff[130:136], "000000")                        # boxes
+        self.assertEqual(buff[136:142], "-00076")                        # units
+        self.assertEqual(buff[142:156], "00012345019572")
+        self.assertEqual(buff[156:168], "".ljust(12))
+        self.assertEqual(buff[168:170], 'IR')

@@ -1,0 +1,8 @@
+xlsxwriter
+Sphinx
+json-rpc
+pyusps
+urllib2
+yaml
+psycopg2
+python-ach

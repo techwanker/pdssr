@@ -1,0 +1,15 @@
+http://json-rpc.org/wiki/python-json-rpc
+
+https://pypi.python.org/pypi/jsonrpc-requests/
+
+https://github.com/tcalmant/jsonrpclib
+
+git clone git://github.com/tcalmant/jsonrpclib.git
+
+look at ~Downloads/
+cd jsonrpclib
+
+CdsUnload
+   calculate totals
+   modify __init__ use or dele
+

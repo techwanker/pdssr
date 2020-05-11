@@ -1,0 +1,181 @@
+# TODO externalize sql and have a common insert
+
+#from pdsutil.Dexterity import Dexterity  # TODO why
+from pdsutil.DbUtil import CursorHelper, SqlStatements
+import logging
+import os
+
+# TODO CHANGE ALL DT to YYYYMMDD
+# TODO ADD FIELD VALIDATORS
+# TODO SHARE TABLE TAGS
+# TODO
+
+# http://stackoverflow.com/questions/4263508/question-about-postgresql-bind-variables
+# TODO note difference
+conn = None
+#dexterity = Dexterity()
+
+# TODO !!! user CursorHelper to catch and report exceptions
+
+logger = logging.getLogger(__name__)
+
+
+def get_file_path(file_name):
+    fdir = os.path.dirname(os.path.realpath(__file__))
+    return os.path.join(fdir, file_name)
+
+
+def commit():
+    response = conn.commit()  # This should probably be migrated out
+
+
+def get_all_rows(cursor):  # TODO  put on CursorHelper
+    # TODO move to a util package
+    ##
+    #  Returns a list of dictionaries
+    #  each list entry corresponds to one row
+    #  each row is keyed by column name or alias per select statement
+    rows = []
+    columns = [i[0] for i in cursor.description]
+    column_list = []
+    for row in cursor:
+        rows.append(dict(zip(columns, row)))
+    print("returning " + str(rows))
+    return rows
+
+
+yaml_file_name = get_file_path("../config/etl_persistence_sql.yaml")
+statements = SqlStatements.from_yaml(yaml_file_name).statements
+
+
+# class Customer:
+#     def __init__(self, connection):
+#         self.connection = connection
+#
+#     insert_cursor = None
+#     customer_insert =
+#     """
+#         insert into CUSTOMER (
+#             CUSTOMER_ID
+#         ) values (
+#             :CUSTOMER_ID
+#         )"""
+#     def insert(self, binds):
+#         if self.insert_cursor is None:
+#             self.insert_cursor = CursorHelper(self.connection.cursor())
+#         self.insert_cursor.execute(self.customer_insert, binds)
+
+
+class EtlCustomer:
+    etl_customer_insert = statements["etl_customer_insert"]["sql"]
+
+    def insert(this, binds):
+            CursorHelper(conn.cursor()).execute(this.etl_customer_insert, binds)
+
+
+class EtlFile:
+    def initial_insert(self, binds):
+        etl_file_initial_insert = statements["etl_file_initial_insert"]["sql"]
+        returning = statements["etl_file_initial_insert"]["returning"]
+
+        org_sql = "select org_id from org where org_cd = %(ORG_CD)s";
+
+        ##  inserts a row in the org table
+        ##  returns the primary key of the inserted record
+        rows = CursorHelper(conn.cursor()).execute(org_sql, binds)
+        org_id = None
+        row_found = False
+        for row in rows:
+            row_found = True  # TODO must be a better way
+            org_id = row[0]
+        if not row_found:
+            raise Exception("no data found for " + str(binds) + " in " + org_sql)  # TODO standard
+
+        etl_file_id = CursorHelper(conn.cursor()).execute(etl_file_initial_insert, binds, returning=returning)  # TODO note Returning!
+
+        logger.info("returning etl_file_id " + str(etl_file_id))
+        return etl_file_id
+
+
+class EtlSalesTot:
+    etl_sale_tot_insert = statements["etl_sale_tot_insert"]["sql"]
+
+    def insert(self, binds):
+        print("not supported")  # TODO
+        # raise Exception("not supported")
+
+
+class EtlInventory:
+    etl_inventory_insert = statements["etl_inventory_insert"]["sql"]
+
+    def insert(self, binds):
+        CursorHelper(conn.cursor()).execute(self.etl_inventory_insert, binds)
+
+
+
+class EtlInventoryTot:
+    etl_inventory_tot_insert = statements["etl_inventory_tot_insert"]["sql"]
+
+    def insert(self, binds):
+        CursorHelper(conn.cursor()).execute(self.etl_inventory_tot_insert, binds)
+
+
+
+class EtlSale:
+    etl_sale_insert = statements["etl_sale_insert"]["sql"]
+
+    def insert(self, binds):
+        CursorHelper(conn.cursor()).execute(self.etl_sale_insert, binds)
+
+# class OrgDatafeed:
+#     org_datafeed_insert = """
+#     insert into ORG_DATAFEED (
+#         ORG_ID
+#     ) select
+#           org_id from org where org_cd = %(ORG_CD)s
+#     """
+#
+#     insert_cursor = None
+#     new_id = None
+#
+#     def insert(self, org_cd):
+#         binds = {"org_cd": org_cd}
+#
+#        CursorHelper(conn.cursor()).execute(self.org_datafeed_insert, binds)
+
+
+class EtlCustomerTot:
+    etl_customer_tot_insert = statements["etl_customer_tot_insert"]["sql"]
+
+    def insert(self, binds):
+        CursorHelper(conn.cursor()).execute(self.etl_customer_tot_insert, binds)
+
+
+# class Org:
+#     ##
+#     # persistence class for org table
+#     #
+#     org_insert = """
+#         insert into ORG  ( ORG_CD, ORG_NM)
+#         values (%(ORG_CD)s, %(ORG_NM)s"""
+#     insert_cursor = None
+#     new_id = None
+#
+#     def insert(this, binds):
+#         ##
+#         #  inserts a row in the org table
+#         #  returns the primary key of the inserted record
+#         binds["new_id"] = new_id
+#         conn.cursor().execute(this.insert, binds) # ! TODO should be in return
+#
+#     # def get_for_org_cd(self, org_cd):
+#     #     select_for_org_cd = """
+#     #     select org_id, org_cd, org_nm
+#     #     from org
+#     #     where org_cd = %(ORG_CD)s"""
+#     #
+#     #     binds = {"ORG_CD": org_cd}
+#     #
+#     #     conn.cursor().execute(select_for_org_cd, binds)
+#     #
+#     #     return get_all_rows(get_for_org_cd_cursor)  # TODO !! get one

@@ -1,0 +1,27 @@
+set -x
+set -e
+export PYTHONPATH=/common/home/jjs/python_projects
+#python sra_main.py initialize
+run_current() {
+	python3 sra_main.py load testdata/load1.cds.dat --distributor_cd "EXOTICTX"
+	python3 sra_main.py load_condition 201723
+	python3 sra_main.py post 201723 
+	python3 sra_main.py unload --file /tmp/201723.cds --connection_name test 201723
+	python3 sra_main.py unload --connection-name current --file /tmp/201723.cds  201723
+	python3 sra_main.py to_csv --input_file=/tmp/201723.cds --output_dir=/tmp
+}
+
+run_test() {
+	set -x
+	set -e
+#	python3 sra_main.py --connection_name it load testdata/load1.cds.dat --distributor_cd "EXOTICTX"
+#	python3 sra_main.py --connection_name it load_condition 1 
+#	python3 sra_main.py --connection_name it post 1 
+	python3 sra_main.py --connection_name it unload   --file /tmp/201723.cds  201723
+	    #python3 sra_main.py unload --connection-name current --file /tmp/test_20.cds  20
+	python3 sra_main.py --connection_name it to_csv --input_file=/tmp/201723.cds --output_dir=/tmp
+}
+
+run_test
+
+
